@@ -74,6 +74,14 @@
    ![image](https://github.com/user-attachments/assets/e8b43c46-5d86-4cb5-920a-59563355a0c1)
 
 
+## 打赏
+如果帮助到你, 可以通过扫码支持我！
+
+
+<img src="https://github.com/user-attachments/assets/73539bf0-6b25-4485-9271-362ffc401fc4" width="200">
+<br/>
+
+<img src="https://github.com/user-attachments/assets/9cc594d5-4bf0-49db-8ca2-bb0b47802fd2" width="200">
 
 ## 许可证
 
