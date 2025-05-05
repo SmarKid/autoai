@@ -1,6 +1,6 @@
 # AutoAI问答助手
 
-一个基于Ollama的本地AI问答工具，支持批量处理文本并生成AI回答。
+一个基于Ollama的本地AI问答工具，支持批量处理文本并生成AI回答。当你有需要批量让ai进行回答的需求时可以使用此程序。
 
 ## 功能特点
 
@@ -32,8 +32,8 @@
 
 #### 方式二：使用打包版本
 
-1. 从[Releases](https://github.com/你的用户名/autoai/releases)下载最新版本
-2. 解压后直接运行`AutoAI问答助手.exe`
+1. 从[Releases](https://github.com/SmarKid/autoai/releases)下载最新版本
+2. 运行`AutoAI.exe`
 
 ## 使用说明
 
@@ -61,6 +61,19 @@
    ```
 
 打包后的程序位于`dist`文件夹中。
+## 使用
+1. 事先准备好原文材料, 最好是txt格式.
+2. 打开程序, 添加提示词模板, 原文材料会被分割成若干段落, 每个段落会被填充进提示词模板, 然后交给AI模型进行回答. 提示词模板中使用{original_text}表示原文段落.
+
+
+   ![image](https://github.com/user-attachments/assets/e3125aef-331e-4fac-b274-6fee6083ebff)
+
+3. 添加输出模板. 每次回答会填充进输出模板, 整合到一个文本文件中输出. {original_text} 表示原文段落, {output_text} 表示AI模型回答的结果.
+
+   
+   ![image](https://github.com/user-attachments/assets/e8b43c46-5d86-4cb5-920a-59563355a0c1)
+
+
 
 ## 许可证
 
