@@ -1,0 +1,8 @@
+test
+template
+logs
+dist
+.idea
+.vscode
+build
+script/__pycache__

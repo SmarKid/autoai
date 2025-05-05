@@ -1,0 +1,4 @@
+{
+  "文言文翻译输出": "原文:\n    {original_text}\n译文:\n    {output_text}",
+  "段落概括": "原文:\n    {original_text}\n概括:\n    {output_text}"
+}
