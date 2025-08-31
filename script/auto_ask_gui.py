@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import re
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QLineEdit, QTextEdit, QPushButton, QFileDialog, QComboBox,
                              QGroupBox, QRadioButton, QButtonGroup, QMessageBox)
@@ -183,16 +184,20 @@ class AutoAskGUI(QMainWindow):
 
     def closeEvent(self, event):
         """在关闭窗口前保存设置"""
+        logger.info('窗口关闭，正在保存设置...')
         self.save_settings()
         super().closeEvent(event)
 
     def load_settings(self):
         """加载保存的设置"""
+        logger.info('正在加载设置...')
         if not os.path.exists(self.settings_file):
+            logger.info('设置文件不存在，跳过加载。')
             return
         try:
             with open(self.settings_file, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
+            logger.debug(f'加载的设置: {settings}')
 
             # API Provider
             if settings.get('api_provider') == 'openai':
@@ -223,6 +228,7 @@ class AutoAskGUI(QMainWindow):
                 self.custom_separator_edit.setText(settings.get('custom_separator', ''))
             else:
                 self.newline_radio.setChecked(True)
+            logger.info('设置加载成功。')
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"加载设置失败: {e}")
             pass
@@ -254,10 +260,14 @@ class AutoAskGUI(QMainWindow):
         try:
             with open(self.settings_file, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=4, ensure_ascii=False)
+            logger.info(f'设置已保存到 {self.settings_file}')
+            logger.debug(f'保存的设置: {settings}')
         except Exception as e:
             logger.error(f"保存设置失败: {e}")
 
     def on_api_provider_changed(self):
+        provider = 'Ollama' if self.ollama_radio.isChecked() else 'OpenAI'
+        logger.info(f'API提供商切换为: {provider}')
         if self.ollama_radio.isChecked():
             self.server_label.setText('Ollama服务器地址:')
             self.server_edit.setText('http://localhost:11434')
@@ -270,11 +280,13 @@ class AutoAskGUI(QMainWindow):
     def select_input_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, '选择输入文件', '', 'Text Files (*.txt);;All Files (*)')
         if file_name:
+            logger.info(f'选择的输入文件: {file_name}')
             self.input_file_path.setText(file_name)
     
     def select_output_dir(self):
         dir_path = QFileDialog.getExistingDirectory(self, '选择输出文件夹')
         if dir_path:
+            logger.info(f'选择的输出文件夹: {dir_path}')
             self.output_dir_path.setText(dir_path)
     
     def toggle_custom_separator(self, checked):
@@ -282,6 +294,7 @@ class AutoAskGUI(QMainWindow):
     
     def load_templates(self):
         """加载提示词和输出模板"""
+        logger.info('正在加载模板...')
         template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         os.makedirs(template_dir, exist_ok=True)
         
@@ -295,8 +308,12 @@ class AutoAskGUI(QMainWindow):
                     self.prompt_combo.addItems(templates.keys())
                     if templates:
                         self.prompt_edit.setText(list(templates.values())[0])
-            except:
+                logger.info('提示词模板加载成功。')
+            except Exception as e:
+                logger.error(f'加载提示词模板失败: {e}')
                 pass
+        else:
+            logger.warning('提示词模板文件不存在。')
         
         # 加载输出模板
         output_file = os.path.join(template_dir, 'output_templates.json')
@@ -308,8 +325,12 @@ class AutoAskGUI(QMainWindow):
                     self.output_combo.addItems(templates.keys())
                     if templates:
                         self.output_edit.setText(list(templates.values())[0])
-            except:
+                logger.info('输出格式模板加载成功。')
+            except Exception as e:
+                logger.error(f'加载输出格式模板失败: {e}')
                 pass
+        else:
+            logger.warning('输出格式模板文件不存在。')
         
         # 连接信号
         self.prompt_combo.currentTextChanged.connect(self.on_prompt_template_changed)
@@ -319,7 +340,7 @@ class AutoAskGUI(QMainWindow):
         """当选择提示词模板时更新内容"""
         if not title:
             return
-            
+        logger.info(f'提示词模板变更为: {title}')
         template_file = os.path.join(os.path.dirname(__file__), 'templates', 'prompt_templates.json')
         if os.path.exists(template_file):
             try:
@@ -327,14 +348,15 @@ class AutoAskGUI(QMainWindow):
                     templates = json.load(f)
                     if title in templates:
                         self.prompt_edit.setText(templates[title])
-            except:
+            except Exception as e:
+                logger.error(f'更新提示词模板内容失败: {e}')
                 pass
     
     def on_output_template_changed(self, title):
         """当选择输出模板时更新内容"""
         if not title:
             return
-            
+        logger.info(f'输出格式模板变更为: {title}')
         template_file = os.path.join(os.path.dirname(__file__), 'templates', 'output_templates.json')
         if os.path.exists(template_file):
             try:
@@ -342,22 +364,26 @@ class AutoAskGUI(QMainWindow):
                     templates = json.load(f)
                     if title in templates:
                         self.output_edit.setText(templates[title])
-            except:
+            except Exception as e:
+                logger.error(f'更新输出格式模板内容失败: {e}')
                 pass
     
     def manage_templates(self, template_type):
         """打开模板管理对话框"""
+        logger.info(f'打开模板管理对话框: {template_type}')
         dialog = TemplateDialog(template_type, self)
         # 连接模板保存信号
         dialog.template_saved.connect(self.load_templates)
         dialog.exec()
     
     def start_processing(self):
+        logger.info('开始处理...')
         input_file = self.input_file_path.text()
         output_dir = self.output_dir_path.text()
         output_filename = self.output_filename_edit.text()
         
         if not output_filename:
+            logger.warning('输出文件名为空，处理中止。')
             self.status_edit.append('错误：请输入输出文件名')
             return
             
@@ -372,6 +398,7 @@ class AutoAskGUI(QMainWindow):
         else:
             if self.newline_radio.isChecked():
                 separator = '\n'
+
             elif self.comma_radio.isChecked():
                 separator = '[,，]'  # 同时支持中英文逗号
             elif self.period_radio.isChecked():
@@ -383,41 +410,52 @@ class AutoAskGUI(QMainWindow):
         prompt_template = self.prompt_edit.toPlainText()
         output_template = self.output_edit.toPlainText()
         
-        if not all([input_file, output_file, prompt_template, output_template]):
+        if not all([input_file, output_dir, output_filename, prompt_template, output_template]):
+            logger.warning('必要信息不完整，处理中止。')
             self.status_edit.append('错误：请填写所有必要信息')
             return
+
+        logger.info(f'输入文件: {input_file}')
+        logger.info(f'输出文件: {output_file}')
+        logger.info(f'分隔符: {repr(separator)}')
+        logger.info(f'API服务器: {server_url}')
+        logger.info(f'模型: {model}')
         
         try:
             # 检查输入文件是否存在
             if not os.path.exists(input_file):
+                logger.error(f'输入文件不存在: {input_file}')
                 QMessageBox.critical(self, '错误', '输入文件不存在，请检查文件路径！')
                 return
                 
             # 检查输出目录是否存在
             if not os.path.exists(output_dir):
+                logger.error(f'输出目录不存在: {output_dir}')
                 QMessageBox.critical(self, '错误', '输出目录不存在，请选择有效的输出目录！')
                 return
             
             with open(input_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            import re
             # 如果指定了分隔符，按分隔符分割；否则按行分割
             if separator:
                 try:
                     # 使用正则表达式分割
                     segments = re.split(separator, content)
                 except re.error as e:
+                    logger.error(f'正则表达式错误: {e}')
                     QMessageBox.critical(self, '错误', f'正则表达式格式错误：{str(e)}')
                     return
             else:
                 segments = content.splitlines()
             
             with open(output_file, 'w', encoding='utf-8') as f:
-                for segment in segments:
+                logger.info(f'共 {len(segments)} 个片段待处理。')
+                for i, segment in enumerate(segments):
                     if not segment.strip():
                         continue
                     
+                    logger.info(f'正在处理片段 {i+1}/{len(segments)}...')
                     # 构造提示词
                     prompt = prompt_template.replace('{original_text}', segment)
                     
@@ -436,7 +474,9 @@ class AutoAskGUI(QMainWindow):
                         result = output_template.replace('{original_text}', segment).replace('{output_text}', response)
                         f.write(result + '\n')
                         self.status_edit.append(f'处理完成: {segment[:50]}...')
+                        logger.info(f'片段处理成功: {segment[:50]}...')
                     else:
+                        logger.error(f'{api_name} API调用失败，无响应。服务器: {server_url}')
                         # 显示连接错误提示
                         QMessageBox.warning(self, f'{api_name}连接错误',
                             f'无法连接到{api_name}服务器({server_url})，请检查：\n'
@@ -446,11 +486,13 @@ class AutoAskGUI(QMainWindow):
                             '4. 防火墙设置是否允许连接')
                         return
             
+            logger.info('所有处理完成！')
             QMessageBox.information(self, '完成', '所有处理完成！')
             self.status_edit.append('所有处理完成！')
             
         except Exception as e:
             error_msg = str(e)
+            logger.error(f'处理过程中发生未知错误: {error_msg}', exc_info=True)
             self.status_edit.append(f'发生错误: {error_msg}')
             QMessageBox.critical(self, '错误', f'处理过程中发生错误：\n{error_msg}')
 
