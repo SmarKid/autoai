@@ -3,6 +3,35 @@ import json
 from logger import logger
 
 
+def chat_with_openai(prompt, model="gpt-3.5-turbo", server_url="https://localhost:8000/v1"):
+    # 请求头，可能需要根据实际情况调整
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY'  # 替换为你的实际API密钥
+    }
+
+    # 请求数据
+    data = {
+        'model': model,
+        'messages': [
+            {'role': 'user', 'content': prompt}
+        ]
+    }
+
+    try:
+        # 发送POST请求
+        response = requests.post(f"{server_url}/chat/completions", headers=headers, json=data)
+
+        # 检查响应状态码
+        response.raise_for_status()
+
+        # 返回响应中的内容，假设是JSON格式
+        return response.json()['choices'][0]['message']['content']
+
+    except requests.exceptions.RequestException as e:
+        return f"Error: {e}"
+
+
 def chat_with_ollama(prompt, model="qwen2.5:7b", server_url="http://localhost:11434"):
     """
     与Ollama模型进行对话

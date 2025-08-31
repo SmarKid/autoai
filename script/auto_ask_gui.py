@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QGroupBox, QRadioButton, QButtonGroup, QMessageBox)
 from template_dialog import TemplateDialog
 from PyQt6.QtCore import Qt
-from auto_ask import chat_with_ollama
+from auto_ask import chat_with_ollama, chat_with_openai
 from logger import logger
 
 class AutoAskGUI(QMainWindow):
@@ -36,16 +36,33 @@ class AutoAskGUI(QMainWindow):
         prompt_group.addWidget(self.prompt_edit)
         layout.addLayout(prompt_group)
         
-        # Ollama服务器配置
-        ollama_group = QVBoxLayout()
+        # API Provider selection
+        api_provider_group = QGroupBox('API提供商')
+        api_provider_layout = QHBoxLayout()
+        self.api_button_group = QButtonGroup(self)
+        self.ollama_radio = QRadioButton('Ollama')
+        self.openai_radio = QRadioButton('OpenAI')
+        self.ollama_radio.setChecked(True)
+        self.api_button_group.addButton(self.ollama_radio)
+        self.api_button_group.addButton(self.openai_radio)
+        api_provider_layout.addWidget(self.ollama_radio)
+        api_provider_layout.addWidget(self.openai_radio)
+        api_provider_group.setLayout(api_provider_layout)
+        layout.addWidget(api_provider_group)
+
+        # Connect signals for API provider change
+        self.ollama_radio.toggled.connect(self.on_api_provider_changed)
+        
+        # API服务器配置
+        api_config_group = QVBoxLayout()
         
         # 服务器地址
         server_layout = QHBoxLayout()
-        server_label = QLabel('Ollama服务器地址:')
+        self.server_label = QLabel('Ollama服务器地址:')
         self.server_edit = QLineEdit('http://localhost:11434')
-        server_layout.addWidget(server_label)
+        server_layout.addWidget(self.server_label)
         server_layout.addWidget(self.server_edit)
-        ollama_group.addLayout(server_layout)
+        api_config_group.addLayout(server_layout)
         
         # 模型名称
         model_layout = QHBoxLayout()
@@ -53,9 +70,9 @@ class AutoAskGUI(QMainWindow):
         self.model_edit = QLineEdit('gemma3:1b')
         model_layout.addWidget(model_label)
         model_layout.addWidget(self.model_edit)
-        ollama_group.addLayout(model_layout)
+        api_config_group.addLayout(model_layout)
         
-        layout.addLayout(ollama_group)
+        layout.addLayout(api_config_group)
         
         # 输出格式模板选择区
         output_group = QVBoxLayout()
@@ -158,6 +175,16 @@ class AutoAskGUI(QMainWindow):
         
         # 加载模板
         self.load_templates()
+
+    def on_api_provider_changed(self):
+        if self.ollama_radio.isChecked():
+            self.server_label.setText('Ollama服务器地址:')
+            self.server_edit.setText('http://localhost:11434')
+            self.model_edit.setText('gemma3:1b')
+        elif self.openai_radio.isChecked():
+            self.server_label.setText('OpenAI API服务器地址:')
+            self.server_edit.setText('https://localhost:8000/v1')
+            self.model_edit.setText('gpt-3.5-turbo')
     
     def select_input_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, '选择输入文件', '', 'Text Files (*.txt);;All Files (*)')
@@ -323,21 +350,28 @@ class AutoAskGUI(QMainWindow):
                     prompt = prompt_template.replace('{original_text}', segment)
                     
                     # 调用AI模型
-                    response = chat_with_ollama(prompt, model, server_url)
-                    
+                    response = None
+                    api_name = ""
+                    if self.ollama_radio.isChecked():
+                        api_name = "Ollama"
+                        response = chat_with_ollama(prompt, model, server_url)
+                    elif self.openai_radio.isChecked():
+                        api_name = "OpenAI"
+                        response = chat_with_openai(prompt, model, server_url)
+
                     if response:
                         # 构造输出结果
                         result = output_template.replace('{original_text}', segment).replace('{output_text}', response)
                         f.write(result + '\n')
                         self.status_edit.append(f'处理完成: {segment[:50]}...')
                     else:
-                        # 显示Ollama连接错误提示
-                        QMessageBox.warning(self, 'Ollama连接错误',
-                            f'无法连接到Ollama服务器({server_url})，请检查：\n'
-                            '1. Ollama服务是否已启动\n'
+                        # 显示连接错误提示
+                        QMessageBox.warning(self, f'{api_name}连接错误',
+                            f'无法连接到{api_name}服务器({server_url})，请检查：\n'
+                            '1. 服务是否已启动\n'
                             '2. 服务器地址是否正确\n'
                             '3. 网络连接是否正常\n'
-                            '4. 防火墙设置是否允许连接')
+                            '4. 防火墙设置是否允许连接\n')
                         return
             
             QMessageBox.information(self, '完成', '所有处理完成！')
