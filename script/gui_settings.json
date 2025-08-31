@@ -1,0 +1,11 @@
+{
+    "api_provider": "openai",
+    "server_url": "http://172.16.12.22:8000/v1",
+    "model_name": "qwen2.5-coder-32b",
+    "prompt_template": "红楼梦古白话翻译",
+    "output_template": "直接输出",
+    "input_file": "D:\\zzk资料\\其他文件\\书籍翻译\\第一回 甄士隐梦幻识通灵 贾雨村风尘怀闺秀.txt",
+    "output_dir": "D:/zzk资料/其他文件/书籍翻译",
+    "output_filename": "aitest1",
+    "separator_type": "newline"
+}

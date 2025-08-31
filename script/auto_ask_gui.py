@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QLineEdit, QTextEdit, QPushButton, QFileDialog, QComboBox,
                              QGroupBox, QRadioButton, QButtonGroup, QMessageBox)
@@ -14,6 +15,9 @@ class AutoAskGUI(QMainWindow):
         self.setWindowTitle('自动AI提问程序')
         self.setGeometry(100, 100, 800, 600)
         logger.info('启动自动AI提问程序')
+
+        # Settings file
+        self.settings_file = os.path.join(os.path.dirname(__file__), 'gui_settings.json')
         
         # 创建主窗口部件和布局
         central_widget = QWidget()
@@ -173,8 +177,85 @@ class AutoAskGUI(QMainWindow):
         self.status_edit.setReadOnly(True)
         layout.addWidget(self.status_edit)
         
-        # 加载模板
+        # 加载模板和设置
         self.load_templates()
+        self.load_settings()
+
+    def closeEvent(self, event):
+        """在关闭窗口前保存设置"""
+        self.save_settings()
+        super().closeEvent(event)
+
+    def load_settings(self):
+        """加载保存的设置"""
+        if not os.path.exists(self.settings_file):
+            return
+        try:
+            with open(self.settings_file, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+
+            # API Provider
+            if settings.get('api_provider') == 'openai':
+                self.openai_radio.setChecked(True)
+            else:
+                self.ollama_radio.setChecked(True)
+
+            self.server_edit.setText(settings.get('server_url', ''))
+            self.model_edit.setText(settings.get('model_name', ''))
+
+            # Templates - set after items are loaded
+            self.prompt_combo.setCurrentText(settings.get('prompt_template', ''))
+            self.output_combo.setCurrentText(settings.get('output_template', ''))
+
+            # File paths
+            self.input_file_path.setText(settings.get('input_file', ''))
+            self.output_dir_path.setText(settings.get('output_dir', ''))
+            self.output_filename_edit.setText(settings.get('output_filename', ''))
+
+            # Separator
+            separator_type = settings.get('separator_type', 'newline')
+            if separator_type == 'comma':
+                self.comma_radio.setChecked(True)
+            elif separator_type == 'period':
+                self.period_radio.setChecked(True)
+            elif separator_type == 'custom':
+                self.custom_radio.setChecked(True)
+                self.custom_separator_edit.setText(settings.get('custom_separator', ''))
+            else:
+                self.newline_radio.setChecked(True)
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.error(f"加载设置失败: {e}")
+            pass
+
+    def save_settings(self):
+        """保存当前设置"""
+        settings = {
+            'api_provider': 'openai' if self.openai_radio.isChecked() else 'ollama',
+            'server_url': self.server_edit.text(),
+            'model_name': self.model_edit.text(),
+            'prompt_template': self.prompt_combo.currentText(),
+            'output_template': self.output_combo.currentText(),
+            'input_file': self.input_file_path.text(),
+            'output_dir': self.output_dir_path.text(),
+            'output_filename': self.output_filename_edit.text(),
+        }
+
+        # Separator
+        if self.newline_radio.isChecked():
+            settings['separator_type'] = 'newline'
+        elif self.comma_radio.isChecked():
+            settings['separator_type'] = 'comma'
+        elif self.period_radio.isChecked():
+            settings['separator_type'] = 'period'
+        elif self.custom_radio.isChecked():
+            settings['separator_type'] = 'custom'
+            settings['custom_separator'] = self.custom_separator_edit.text()
+
+        try:
+            with open(self.settings_file, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"保存设置失败: {e}")
 
     def on_api_provider_changed(self):
         if self.ollama_radio.isChecked():
@@ -201,9 +282,6 @@ class AutoAskGUI(QMainWindow):
     
     def load_templates(self):
         """加载提示词和输出模板"""
-        import os
-        import json
-        
         template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         os.makedirs(template_dir, exist_ok=True)
         
@@ -239,9 +317,6 @@ class AutoAskGUI(QMainWindow):
     
     def on_prompt_template_changed(self, title):
         """当选择提示词模板时更新内容"""
-        import os
-        import json
-        
         if not title:
             return
             
@@ -257,9 +332,6 @@ class AutoAskGUI(QMainWindow):
     
     def on_output_template_changed(self, title):
         """当选择输出模板时更新内容"""
-        import os
-        import json
-        
         if not title:
             return
             
@@ -371,7 +443,7 @@ class AutoAskGUI(QMainWindow):
                             '1. 服务是否已启动\n'
                             '2. 服务器地址是否正确\n'
                             '3. 网络连接是否正常\n'
-                            '4. 防火墙设置是否允许连接\n')
+                            '4. 防火墙设置是否允许连接')
                         return
             
             QMessageBox.information(self, '完成', '所有处理完成！')
